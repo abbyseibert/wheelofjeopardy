@@ -8,18 +8,13 @@ class GameBoard:
         self.canvas = Canvas(width=1000,height=750)
         self.cat_arr = cat_arr
         self.round_two = round_two
-        self.player_one = [0, #score
-                           1, #boolean, is it their turn?
-                           0] #amount of free spins
-        self.player_two = [0,0,0]
-        self.player_three = [0,0,0]
+        self.players = [[0,1,0],[0,0,0],[0,0,0]] # each arr is a player; each player arr is score, is it their turn, free spins
         self.instructions = 'Player One, \nClick on the wheel to spin it.'
         self.spin_count = 0 #only fifty spins a round
         self.qs_left = 30 #start out with 30 questions on the board
         self.create_board()
         self.canvas.pack()
-        self.spintime = 1
-        self.cluetime = 0
+        self.spintime = 1 # if 0, then clue time
 
     def create_board(self):
         # wheel 
@@ -153,9 +148,9 @@ class GameBoard:
         self.canvas.create_text(85,540,text='Player One Score:  ')
         self.canvas.create_text(85,560,text='Player Two Score:  ')
         self.canvas.create_text(85,580,text='Player Three Score:')
-        self.pone = self.canvas.create_text(180,540,text=self.player_one[0])
-        self.ptwo = self.canvas.create_text(180,560,text=self.player_two[0])
-        self.pthree = self.canvas.create_text(180,580,text=self.player_three[0])
+        self.pone = self.canvas.create_text(180,540,text='0')
+        self.ptwo = self.canvas.create_text(180,560,text='0')
+        self.pthree = self.canvas.create_text(180,580,text='0')
         self.instr_box = self.canvas.create_text(500,600,text=self.instructions,font=(24))
         self.num_spins = self.canvas.create_text(500,700,text=self.spin_count)
         # clacker
@@ -168,10 +163,13 @@ class GameBoard:
 
     def click(self,event): # listen for clicks
         # check if it's time for a spin click or time for a clue click
-        if self.canvas.find_withtag(CURRENT):
-            print(event.x)
-            print(event.y)
-            self.spin()
+        if self.spintime == 1:
+            if self.canvas.find_withtag(CURRENT):
+                print(event.x)
+                print(event.y)
+                self.spin()
+        else:
+            self.which_clue(event)
         
     def spin(self):
         # update spin count
@@ -260,16 +258,125 @@ class GameBoard:
         for i in range(len(self.wheel_state)):
             if self.wheel_state[i][1] == self.w_pos_one:
                 print(self.wheel_state[i][0]) # prints the color's position in wheel_state; use to map to cats
-        if self.spin_count > 3: # this should probably exist in a separate function for time/spin monitoring
-            self.spin_count = 0
-            self.canvas.delete("all")
-            self.round_one = self.cat_arr
-            self.cat_arr = self.round_two
-            self.create_board()
-            self.canvas.pack()
+                self.map_wedge(self.wheel_state[i][0])
+##        if self.spin_count > 3: # this should probably exist in a separate function for time/spin monitoring
+##            self.spin_count = 0
+##            self.canvas.delete("all")
+##            self.round_one = self.cat_arr
+##            self.cat_arr = self.round_two
+##            self.create_board()
+##            self.canvas.pack()
+
+    def map_wedge(self,curr_wedge):
+        if curr_wedge == 1:
+            self.spin_again()
+        elif curr_wedge == 2:
+            print(self.cat_arr[0])
+            self.pick_clue(self.cat_arr[0])
+        elif curr_wedge == 3:
+            self.lose_turn()
+        elif curr_wedge == 4:
+            print(self.cat_arr[1])
+            self.pick_clue(self.cat_arr[1])
+        elif curr_wedge == 5:
+            self.free_turn()
+        elif curr_wedge == 6:
+            print(self.cat_arr[2])
+            self.pick_clue(self.cat_arr[2])
+        elif curr_wedge == 7:
+            self.bankrupt()
+        elif curr_wedge == 8:
+            print(self.cat_arr[3])
+            self.pick_clue(self.cat_arr[3])
+        elif curr_wedge == 9:
+            self.opp_choice()
+        elif curr_wedge == 10:
+            print(self.cat_arr[4])
+            self.pick_clue(self.cat_arr[4])
+        elif curr_wedge == 11:
+            self.players_choice()
+        else:
+            print(self.cat_arr[5])
+            self.pick_clue(self.cat_arr[5])
+
+    def spin_again(self):
+        for i in range(len(self.players)):
+            if self.players[i][1] == 1: # the player whose turn it is
+                active_player = i + 1
+        self.canvas.delete(self.instr_box)
+        self.instructions = 'Player ' + str(active_player) + ', \nSpin again!'
+        self.instr_box = self.canvas.create_text(500,600,text=self.instructions,font=(24))
+        self.canvas.update_idletasks()
+
+    def lose_turn(self):
+        print("losing turn")
+        for i in range(len(self.players)):
+            if self.players[i][1] == 1: # the player whose turn it is
+                active_player = i + 1
+                if i == len(self.players) - 1:
+                    next_player = 1
+                else:
+                    next_player = i + 2
+        self.players[active_player - 1][1] = 0
+        self.players[next_player - 1][1] = 1
+        self.canvas.delete(self.instr_box)
+        self.instructions = 'Player ' + str(active_player) + ', \nYou lost your turn.\nPlayer ' + str(next_player) + ', go ahead and spin!'
+        self.instr_box = self.canvas.create_text(500,600,text=self.instructions,font=(24))
+        self.canvas.update_idletasks()
+
+    def free_turn(self):
+        print("giving player a free turn")
+        for i in range(len(self.players)):
+            if self.players[i][1] == 1: # the player whose turn it is
+                active_player = i + 1
+        self.canvas.delete(self.instr_box)
+        self.instructions = 'Player ' + str(active_player) + ', \nSpin again!'
+        self.instr_box = self.canvas.create_text(500,600,text=self.instructions,font=(24))
+        self.canvas.update_idletasks()
+
+    def bankrupt(self):
+        print("bankrupting player")
+        for i in range(len(self.players)):
+            if self.players[i][1] == 1: # the player whose turn it is
+                active_player = i + 1
+        self.canvas.delete(self.instr_box)
+        self.instructions = 'Player ' + str(active_player) + ', \nSpin again!'
+        self.instr_box = self.canvas.create_text(500,600,text=self.instructions,font=(24))
+        self.canvas.update_idletasks()
+
+    def opp_choice(self):
+        print("opponent is choosing")
+        for i in range(len(self.players)):
+            if self.players[i][1] == 1: # the player whose turn it is
+                active_player = i + 1
+        self.canvas.delete(self.instr_box)
+        self.instructions = 'Player ' + str(active_player) + ', \nSpin again!'
+        self.instr_box = self.canvas.create_text(500,600,text=self.instructions,font=(24))
+        self.canvas.update_idletasks()
+
+    def players_choice(self):
+        for i in range(len(self.players)):
+            if self.players[i][1] == 1: # the player whose turn it is
+                active_player = i + 1
+        self.canvas.delete(self.instr_box)
+        self.instructions = 'Player ' + str(active_player) + ', \nSpin again!'
+        self.instr_box = self.canvas.create_text(500,600,text=self.instructions,font=(24))
+        self.canvas.update_idletasks()
+
+    def pick_clue(self,category):
+        #self.spintime = 0
+        for i in range(len(self.players)):
+            if self.players[i][1] == 1: # the player whose turn it is
+                active_player = i + 1
+        self.canvas.delete(self.instr_box)
+        self.instructions = 'Player ' + str(active_player) + ', Choose a clue from ' + category
+        self.instr_box = self.canvas.create_text(500,600,text=self.instructions,font=(24))
+        self.canvas.update_idletasks()
         
-    def clue_select(self):
-        print("sup")
+    def which_clue(self,event):
+        if self.canvas.find_withtag(CURRENT):
+            print(event.x)
+            print(event.y)
 
     def form_str(self,string):
         if len(string) > 10:
